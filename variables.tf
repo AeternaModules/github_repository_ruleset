@@ -226,78 +226,158 @@ EOT
     ])
     error_message = "Each required_check list must contain at least 1 items"
   }
-  # --- Unconfirmed validation candidates, derived from github_repository_ruleset's provider source ---
-  # Not auto-enabled: either a bespoke provider validator we can't safely translate,
-  # or a path that crosses a list-typed block (needs its own for_each wrapping).
-  # Review, translate into a real validation{} block above, and delete once confirmed.
-  # path: name
-  #   condition: length(value) >= 1 && length(value) <= 100
-  #   message:   must be between 1 and 100 characters
-  # path: target
-  #   source:    validation.StringInSlice value list is not a literal []string - likely a generated PossibleValuesFor*() helper; resolve separately
-  # path: repository
-  #   condition: can(regex("^[-a-zA-Z0-9_.]{1,100}$", value))
-  #   message:   must include only alphanumeric characters, underscores or hyphens and consist of 100 characters or less
-  # path: enforcement
-  #   condition: contains(["disabled", "active", "evaluate"], value)
-  #   message:   must be one of: disabled, active, evaluate
-  # path: bypass_actors.actor_type
-  #   condition: contains(["RepositoryRole", "Team", "Integration", "OrganizationAdmin", "DeployKey", "EnterpriseOwner", "User"], value)
-  #   message:   must be one of: RepositoryRole, Team, Integration, OrganizationAdmin, DeployKey, EnterpriseOwner, User
-  # path: bypass_actors.bypass_mode
-  #   condition: contains(["always", "pull_request", "exempt"], value)
-  #   message:   must be one of: always, pull_request, exempt
-  # path: rules.pull_request.allowed_merge_methods[*]
-  #   condition: contains(["merge", "squash", "rebase"], value)
-  #   message:   must be one of: merge, squash, rebase
-  # path: rules.pull_request.required_approving_review_count
-  #   condition: value >= 0 && value <= 10
-  #   message:   must be between 0 and 10
-  # path: rules.pull_request.required_reviewers.reviewer.type
-  #   condition: contains(["Team"], value)
-  #   message:   must be one of: Team
-  # path: rules.merge_queue.check_response_timeout_minutes
-  #   condition: value >= 0 && value <= 360
-  #   message:   must be between 0 and 360
-  # path: rules.merge_queue.grouping_strategy
-  #   condition: contains(["ALLGREEN", "HEADGREEN"], value)
-  #   message:   must be one of: ALLGREEN, HEADGREEN
-  # path: rules.merge_queue.max_entries_to_build
-  #   condition: value >= 0 && value <= 100
-  #   message:   must be between 0 and 100
-  # path: rules.merge_queue.max_entries_to_merge
-  #   condition: value >= 0 && value <= 100
-  #   message:   must be between 0 and 100
-  # path: rules.merge_queue.merge_method
-  #   condition: contains(["MERGE", "SQUASH", "REBASE"], value)
-  #   message:   must be one of: MERGE, SQUASH, REBASE
-  # path: rules.merge_queue.min_entries_to_merge
-  #   condition: value >= 0 && value <= 100
-  #   message:   must be between 0 and 100
-  # path: rules.merge_queue.min_entries_to_merge_wait_minutes
-  #   condition: value >= 0 && value <= 360
-  #   message:   must be between 0 and 360
-  # path: rules.commit_message_pattern.operator
-  #   source:    operatorValidation (unresolved: func operatorValidation not found in /home/dan/code/public/terraform-provider-github/github)
-  # path: rules.commit_author_email_pattern.operator
-  #   source:    operatorValidation (unresolved: func operatorValidation not found in /home/dan/code/public/terraform-provider-github/github)
-  # path: rules.committer_email_pattern.operator
-  #   source:    operatorValidation (unresolved: func operatorValidation not found in /home/dan/code/public/terraform-provider-github/github)
-  # path: rules.branch_name_pattern.operator
-  #   source:    operatorValidation (unresolved: func operatorValidation not found in /home/dan/code/public/terraform-provider-github/github)
-  # path: rules.tag_name_pattern.operator
-  #   source:    operatorValidation (unresolved: func operatorValidation not found in /home/dan/code/public/terraform-provider-github/github)
-  # path: rules.required_code_scanning.required_code_scanning_tool.alerts_threshold
-  #   condition: contains(["none", "errors", "errors_and_warnings", "all"], value)
-  #   message:   must be one of: none, errors, errors_and_warnings, all
-  # path: rules.required_code_scanning.required_code_scanning_tool.security_alerts_threshold
-  #   condition: contains(["none", "critical", "high_or_higher", "medium_or_higher", "all"], value)
-  #   message:   must be one of: none, critical, high_or_higher, medium_or_higher, all
-  # path: rules.max_file_size.max_file_size
-  #   condition: value >= 1 && value <= 100
-  #   message:   must be between 1 and 100
-  # path: rules.max_file_path_length.max_file_path_length
-  #   condition: value >= 1 && value <= 32767
-  #   message:   must be between 1 and 32767
+  validation {
+    condition = alltrue([
+      for k, v in var.repository_rulesets : (
+        length(v.name) >= 1 && length(v.name) <= 100
+      )
+    ])
+    error_message = "must be between 1 and 100 characters"
+  }
+  validation {
+    condition = alltrue([
+      for k, v in var.repository_rulesets : (
+        can(regex("^[-a-zA-Z0-9_.]{1,100}$", v.repository))
+      )
+    ])
+    error_message = "must include only alphanumeric characters, underscores or hyphens and consist of 100 characters or less"
+  }
+  validation {
+    condition = alltrue([
+      for k, v in var.repository_rulesets : (
+        contains(["disabled", "active", "evaluate"], v.enforcement)
+      )
+    ])
+    error_message = "must be one of: disabled, active, evaluate"
+  }
+  validation {
+    condition = alltrue([
+      for k, v in var.repository_rulesets : (
+        v.bypass_actors == null || alltrue([for item in v.bypass_actors : (contains(["RepositoryRole", "Team", "Integration", "OrganizationAdmin", "DeployKey", "EnterpriseOwner", "User"], item.actor_type))])
+      )
+    ])
+    error_message = "must be one of: RepositoryRole, Team, Integration, OrganizationAdmin, DeployKey, EnterpriseOwner, User"
+  }
+  validation {
+    condition = alltrue([
+      for k, v in var.repository_rulesets : (
+        v.bypass_actors == null || alltrue([for item in v.bypass_actors : (contains(["always", "pull_request", "exempt"], item.bypass_mode))])
+      )
+    ])
+    error_message = "must be one of: always, pull_request, exempt"
+  }
+  validation {
+    condition = alltrue([
+      for k, v in var.repository_rulesets : (
+        v.rules.pull_request == null || (v.rules.pull_request.allowed_merge_methods == null || (alltrue([for x in v.rules.pull_request.allowed_merge_methods : contains(["merge", "squash", "rebase"], x)])))
+      )
+    ])
+    error_message = "must be one of: merge, squash, rebase"
+  }
+  validation {
+    condition = alltrue([
+      for k, v in var.repository_rulesets : (
+        v.rules.pull_request == null || (v.rules.pull_request.required_approving_review_count == null || (v.rules.pull_request.required_approving_review_count >= 0 && v.rules.pull_request.required_approving_review_count <= 10))
+      )
+    ])
+    error_message = "must be between 0 and 10"
+  }
+  validation {
+    condition = alltrue([
+      for k, v in var.repository_rulesets : (
+        v.rules.pull_request == null || (v.rules.pull_request.required_reviewers == null || alltrue([for item in v.rules.pull_request.required_reviewers : (contains(["Team"], item.reviewer.type))]))
+      )
+    ])
+    error_message = "must be one of: Team"
+  }
+  validation {
+    condition = alltrue([
+      for k, v in var.repository_rulesets : (
+        v.rules.merge_queue == null || (v.rules.merge_queue.check_response_timeout_minutes == null || (v.rules.merge_queue.check_response_timeout_minutes >= 0 && v.rules.merge_queue.check_response_timeout_minutes <= 360))
+      )
+    ])
+    error_message = "must be between 0 and 360"
+  }
+  validation {
+    condition = alltrue([
+      for k, v in var.repository_rulesets : (
+        v.rules.merge_queue == null || (v.rules.merge_queue.grouping_strategy == null || (contains(["ALLGREEN", "HEADGREEN"], v.rules.merge_queue.grouping_strategy)))
+      )
+    ])
+    error_message = "must be one of: ALLGREEN, HEADGREEN"
+  }
+  validation {
+    condition = alltrue([
+      for k, v in var.repository_rulesets : (
+        v.rules.merge_queue == null || (v.rules.merge_queue.max_entries_to_build == null || (v.rules.merge_queue.max_entries_to_build >= 0 && v.rules.merge_queue.max_entries_to_build <= 100))
+      )
+    ])
+    error_message = "must be between 0 and 100"
+  }
+  validation {
+    condition = alltrue([
+      for k, v in var.repository_rulesets : (
+        v.rules.merge_queue == null || (v.rules.merge_queue.max_entries_to_merge == null || (v.rules.merge_queue.max_entries_to_merge >= 0 && v.rules.merge_queue.max_entries_to_merge <= 100))
+      )
+    ])
+    error_message = "must be between 0 and 100"
+  }
+  validation {
+    condition = alltrue([
+      for k, v in var.repository_rulesets : (
+        v.rules.merge_queue == null || (v.rules.merge_queue.merge_method == null || (contains(["MERGE", "SQUASH", "REBASE"], v.rules.merge_queue.merge_method)))
+      )
+    ])
+    error_message = "must be one of: MERGE, SQUASH, REBASE"
+  }
+  validation {
+    condition = alltrue([
+      for k, v in var.repository_rulesets : (
+        v.rules.merge_queue == null || (v.rules.merge_queue.min_entries_to_merge == null || (v.rules.merge_queue.min_entries_to_merge >= 0 && v.rules.merge_queue.min_entries_to_merge <= 100))
+      )
+    ])
+    error_message = "must be between 0 and 100"
+  }
+  validation {
+    condition = alltrue([
+      for k, v in var.repository_rulesets : (
+        v.rules.merge_queue == null || (v.rules.merge_queue.min_entries_to_merge_wait_minutes == null || (v.rules.merge_queue.min_entries_to_merge_wait_minutes >= 0 && v.rules.merge_queue.min_entries_to_merge_wait_minutes <= 360))
+      )
+    ])
+    error_message = "must be between 0 and 360"
+  }
+  validation {
+    condition = alltrue([
+      for k, v in var.repository_rulesets : (
+        v.rules.required_code_scanning == null || (alltrue([for item in v.rules.required_code_scanning.required_code_scanning_tool : (contains(["none", "errors", "errors_and_warnings", "all"], item.alerts_threshold))]))
+      )
+    ])
+    error_message = "must be one of: none, errors, errors_and_warnings, all"
+  }
+  validation {
+    condition = alltrue([
+      for k, v in var.repository_rulesets : (
+        v.rules.required_code_scanning == null || (alltrue([for item in v.rules.required_code_scanning.required_code_scanning_tool : (contains(["none", "critical", "high_or_higher", "medium_or_higher", "all"], item.security_alerts_threshold))]))
+      )
+    ])
+    error_message = "must be one of: none, critical, high_or_higher, medium_or_higher, all"
+  }
+  validation {
+    condition = alltrue([
+      for k, v in var.repository_rulesets : (
+        v.rules.max_file_size == null || (v.rules.max_file_size.max_file_size >= 1 && v.rules.max_file_size.max_file_size <= 100)
+      )
+    ])
+    error_message = "must be between 1 and 100"
+  }
+  validation {
+    condition = alltrue([
+      for k, v in var.repository_rulesets : (
+        v.rules.max_file_path_length == null || (v.rules.max_file_path_length.max_file_path_length >= 1 && v.rules.max_file_path_length.max_file_path_length <= 32767)
+      )
+    ])
+    error_message = "must be between 1 and 32767"
+  }
+  # Note: 6 additional provider-side validators are enforced at apply time but not mirrored as validation{} blocks here (bespoke or non-mechanically-translatable).
 }
 
